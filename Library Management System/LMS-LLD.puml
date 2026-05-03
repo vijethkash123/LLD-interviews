@@ -1,0 +1,357 @@
+@startuml LMS-LLD
+
+title Library Management System - Low Level Design
+
+skinparam classAttributeIconSize 0
+skinparam linetype polyline
+skinparam nodesep 60
+skinparam ranksep 40
+
+' ==========================================
+' Enums
+' ==========================================
+
+enum AccountStatus {
+    ACTIVE
+    BLOCKED
+    SUSPENDED
+}
+
+enum ReservationStatus {
+    PENDING
+    COMPLETED
+    CANCELLED
+}
+
+enum BookFormat {
+    HARDCOVER
+    PAPERBACK
+    EBOOK
+    AUDIOBOOK
+}
+
+' ==========================================
+' Core Entities
+' ==========================================
+
+class Author {
+    - author_id : String
+    - name : String
+    - description : String
+    - books : List<Book>
+    + get_name() : String
+    + add_book(book : Book)
+}
+
+class Book {
+    - isbn : String
+    - title : String
+    - subject : String
+    - authors : List<Author>
+    + get_title() : String
+    + add_author(author : Author)
+}
+
+class BookItem {
+    - barcode : String
+    - is_borrowed : Boolean
+    - due_date : DateTime
+    - format_type : BookFormat
+    - shelf : Shelf
+    - current_lending : BookLending
+    + checkout(member : Member, due_date : DateTime) : Boolean
+    + return_book() : Boolean
+    + get_location() : String
+}
+
+class Shelf {
+    - shelf_number : String
+    - location_identifier : String
+    - book_items : List<BookItem>
+    + add_book_item(book_item : BookItem)
+    + remove_book_item(book_item : BookItem)
+    + get_available_books() : List<BookItem>
+}
+
+class BookLocationInfo {
+    - isbn : String
+    - title : String
+    - total_copies : int
+    - available_copies : int
+    - borrowed_copies : int
+    - locations : List<Dict>
+}
+
+class Library {
+    - name : String
+    - address : String
+    - book_items : List<BookItem>
+    - shelves : List<Shelf>
+    - members : Dict<String, Member>
+    - librarians : Dict<String, Librarian>
+    - catalog : Dict<String, Book>
+    + get_address() : String
+    + add_book_to_catalog(book : Book)
+    + locate_book(isbn : String) : BookLocationInfo
+    + search_books_by_title(title : String) : List<BookLocationInfo>
+}
+
+' ==========================================
+' Accounts
+' ==========================================
+
+class LibraryCard {
+    - card_number : String
+    - barcode : String
+    - issue_date : DateTime
+    - is_valid : Boolean
+    + invalidate()
+    + reactivate()
+}
+
+abstract class Account {
+    - account_id : String
+    - password : String
+    - name : String
+    - email : String
+    - status : AccountStatus
+    - library_card : LibraryCard
+    + reset_password(old : String, new : String) : Boolean
+    + is_active() : Boolean
+}
+
+class Member {
+    - date_of_membership : DateTime
+    - total_books_checked_out : int
+    - active_lendings : List<BookLending>
+    - lending_history : List<BookLending>
+    - reservations : List<BookReservation>
+    - fines : List<Fine>
+    + get_total_books() : int
+    + get_active_lendings_count() : int
+    + get_total_outstanding_fines() : Decimal
+    + add_lending(lending : BookLending)
+    + complete_lending(lending : BookLending)
+    + can_borrow() : Tuple<Boolean, String>
+}
+
+class Librarian {
+    - employee_id : String
+    + add_book_item_to_library(book_item : BookItem, library : Library) : Boolean
+    + assign_book_to_shelf(book_item : BookItem, shelf : Shelf) : Boolean
+    + move_book_to_shelf(book_item : BookItem, new_shelf : Shelf) : Boolean
+    + create_shelf(shelf_number : String, location : String, library : Library) : Shelf
+    + remove_shelf(shelf : Shelf, library : Library) : Boolean
+    + block_member(member : Member, reason : String)
+    + unblock_member(member : Member)
+    + issue_library_card(member : Member) : LibraryCard
+}
+
+' ==========================================
+' Operational Classes
+' ==========================================
+
+class BookReservation {
+    - reservation_id : String
+    - creation_date : DateTime
+    - status : ReservationStatus
+    - book_item : BookItem
+    - member : Member
+    + get_status() : String
+    + complete()
+    + cancel()
+    + fetch_reservation_details() : Dict
+}
+
+class BookLending {
+    - lending_id : String
+    - creation_date : DateTime
+    - due_date : DateTime
+    - return_date : DateTime
+    - book_item : BookItem
+    - member : Member
+    - fine : Fine
+    + is_overdue() : Boolean
+    + get_overdue_days() : int
+    + calculate_fine() : Decimal
+    + return_book(return_date : DateTime) : Fine
+    + get_lending_details() : Dict
+}
+
+class Fine {
+    - fine_id : String
+    - lending_record : BookLending
+    - amount : Decimal
+    - creation_date : DateTime
+    - is_paid : Boolean
+    - payment_date : DateTime
+    - transaction : Transaction
+    + get_amount() : Decimal
+    + mark_paid(transaction : Transaction)
+    + get_fine_details() : Dict
+}
+
+' ==========================================
+' Transactions
+' ==========================================
+
+abstract class Transaction {
+    - transaction_id : String
+    - creation_date : DateTime
+    - amount : Decimal
+    - status : String
+    + {abstract} process_payment() : Boolean
+    + get_transaction_details() : Dict
+}
+
+class CreditCardTransaction {
+    - card_name : String
+    - card_number : String
+    + process_payment() : Boolean
+}
+
+class CheckTransaction {
+    - bank_name : String
+    - check_number : String
+    + process_payment() : Boolean
+}
+
+class CashTransaction {
+    - cash_tendered : Decimal
+    - change_returned : Decimal
+    + process_payment() : Boolean
+}
+
+' ==========================================
+' Notifications
+' ==========================================
+
+abstract class Notification {
+    - notification_id : String
+    - creation_date : DateTime
+    - content : String
+    - recipient : Account
+    - sent : Boolean
+    + {abstract} send_notification() : Boolean
+}
+
+class SMSNotification {
+    - mobile_number : String
+    + send_notification() : Boolean
+}
+
+class EmailNotification {
+    - email_address : String
+    + send_notification() : Boolean
+}
+
+' ==========================================
+' Service
+' ==========================================
+
+class LibraryManagementService {
+    - library : Library
+    - lendings : Dict<String, BookLending>
+    - reservations : Dict<String, BookReservation>
+    + checkout_book(book_item : BookItem, member : Member) : BookLending
+    + return_book(book_item : BookItem, member : Member) : Fine
+    + check_overdue_books() : List<BookLending>
+    + pay_fine(fine : Fine, transaction : Transaction) : Boolean
+    + get_member_summary(member : Member) : Dict
+}
+
+' ==========================================
+' Exceptions
+' ==========================================
+
+class LibraryException {
+}
+
+class UnauthorizedOperationError {
+}
+
+class BookNotAvailableError {
+}
+
+class MemberBlockedError {
+}
+
+class InvalidReturnError {
+}
+
+' ==========================================
+' Relationships
+' ==========================================
+
+' === INHERITANCE (extends / implements) ===
+' Account hierarchy - Member and Librarian extend Account
+Account <|-- Member
+Account <|-- Librarian
+
+' Book hierarchy - BookItem extends Book
+Book <|-- BookItem
+
+' Transaction hierarchy
+Transaction <|-- CreditCardTransaction
+Transaction <|-- CheckTransaction
+Transaction <|-- CashTransaction
+
+' Notification hierarchy
+Notification <|-- SMSNotification
+Notification <|-- EmailNotification
+
+' Exception hierarchy
+LibraryException <|-- UnauthorizedOperationError
+LibraryException <|-- BookNotAvailableError
+LibraryException <|-- MemberBlockedError
+LibraryException <|-- InvalidReturnError
+
+' === COMPOSITION (parent owns child lifecycle) ===
+Library *-- Shelf : contains
+Library *-- BookItem : holds
+Library *-- Book : catalogs
+
+' === AGGREGATION (parent has child, but child can exist independently) ===
+Library o-- Member : has
+Library o-- Librarian : employs
+
+' === ASSOCIATIONS ===
+Author -- Book : writes
+Book -- BookItem : has copies
+BookItem -- Shelf : placed on
+BookItem -- BookLending : current lending
+Account -- LibraryCard : owns
+Member -- BookLending : borrows
+Member -- BookReservation : reserves
+Member -- Fine : owes
+BookLending -- Fine : generates
+Fine -- Transaction : paid via
+Notification -- Account : sent to
+BookReservation -- BookItem : for
+LibraryManagementService -- Library : manages
+LibraryManagementService -- BookLending : tracks
+LibraryManagementService -- BookReservation : tracks
+
+' === ENUM DEPENDENCIES ===
+Account .right.> AccountStatus : uses
+BookReservation .right.> ReservationStatus : uses
+BookItem .right.> BookFormat : uses
+
+' ==========================================
+' Legend
+' ==========================================
+
+legend bottom right
+  |= Icon |= Meaning |
+  | **A** | Abstract Class |
+  | **C** | Concrete Class |
+  | **E** | Enum |
+  |= Arrow |= Meaning |
+  | --|> | Inheritance (extends) |
+  | *-- | Composition (owns lifecycle) |
+  | o-- | Aggregation (independent lifecycle) |
+  | -- | Association |
+  | ..> | Dependency (uses) |
+endlegend
+
+@enduml
