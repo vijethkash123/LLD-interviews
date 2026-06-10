@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FixedWindowRateLimiter extends RateLimiter {
     private final Map<String, Integer> requestCount = new ConcurrentHashMap<>();
-    private final Map<String, Long> windowStart = new HashMap<>();
+    private final Map<String, Long> windowStart = new HashMap<>();  // maps user to current window
 
     public FixedWindowRateLimiter(RateLimitConfig config) {
         super(config, RateLimitType.FIXED_WINDOW);

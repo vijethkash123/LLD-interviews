@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class TokenBucketRateLimiter extends RateLimiter {
-    private final Map<String, Integer> tokens = new ConcurrentHashMap<>();
+    private final Map<String, Integer> tokens = new ConcurrentHashMap<>();  // each user is mapped to number of tokens
     private final Map<String, Long> lastRefillTime = new HashMap<>();
 
     public TokenBucketRateLimiter(RateLimitConfig config) {

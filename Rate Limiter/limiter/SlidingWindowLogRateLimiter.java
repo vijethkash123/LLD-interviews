@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SlidingWindowLogRateLimiter extends RateLimiter {
-    private final Map<String, Queue<Long>> requestLog = new ConcurrentHashMap<>();
+    private final Map<String, Queue<Long>> requestLog = new ConcurrentHashMap<>();  // each user gets his own Queue
 
     public SlidingWindowLogRateLimiter(RateLimitConfig config) {
         super(config, RateLimitType.SLIDING_WINDOW_LOG);
