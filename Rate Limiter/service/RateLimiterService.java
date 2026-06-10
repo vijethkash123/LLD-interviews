@@ -11,7 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class RateLimiterService {
-    private final Map<UserTier, RateLimiter> rateLimiters = new HashMap<>();
+    private final Map<UserTier, RateLimiter> rateLimiters = new HashMap<>();  // Holds type of Rate limiters initiated
 
     public RateLimiterService() {
         // Configure per-tier limits + algorithms
